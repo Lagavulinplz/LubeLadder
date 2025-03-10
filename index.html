@@ -1,0 +1,30 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static('public'));
+
+let availableNumbers = Array.from({ length: 18 }, (_, i) => i + 1);
+let results = [...availableNumbers].sort(() => Math.random() - 0.5);
+let chosenNumbers = {};
+
+io.on('connection', (socket) => {
+    socket.emit('update', availableNumbers);
+    
+    socket.on('choose', (number) => {
+        if (!availableNumbers.includes(number)) return;
+        
+        let result = results[availableNumbers.indexOf(number)];
+        availableNumbers = availableNumbers.filter(n => n !== number);
+        chosenNumbers[number] = result;
+        
+        io.emit('update', availableNumbers);
+        socket.emit('result', { chosen: number, result });
+    });
+});
+
+server.listen(3000, () => console.log('Server running on port 3000'));
